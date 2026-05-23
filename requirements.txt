@@ -1,0 +1,20 @@
+# === Runtime dependencies (installed inside Docker) ===
+# Use CPU-only PyTorch to keep image small (~200MB vs 779MB)
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.1
+pydantic-settings==2.3.0
+httpx==0.27.0
+chromadb==0.5.3
+torch==2.3.1+cpu
+transformers==4.41.2
+peft==0.11.1
+sentence-transformers==3.0.1
+vaderSentiment==3.3.2
+numpy==1.26.4
+scipy==1.13.1
+scikit-learn==1.5.0
+python-dotenv==1.0.1
+loguru==0.7.2
