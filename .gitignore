@@ -9,8 +9,7 @@ venv/
 data/raw/
 data/processed/
 data/models/
-*.json
-*.jsonl
+data/cache/
 *.csv
 *.zip
 

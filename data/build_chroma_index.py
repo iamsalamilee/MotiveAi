@@ -67,8 +67,7 @@ def main():
 
         retriever.upsert_items(items)
         total += len(batch)
-        if total % 5000 == 0:
-            print(f"  {total}/{len(records)} indexed...")
+        print(f"  {total}/{len(records)} indexed...")
 
     print(f"Done. Total indexed: {retriever.get_collection_size()}")
 

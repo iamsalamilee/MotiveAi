@@ -1,0 +1,19 @@
+{
+  "_comment": "Nigerian Pidgin VADER sentiment overrides. Extend this file with full lexicon.",
+  "ginger":  0.7,
+  "hammer":  0.8,
+  "wash":   -0.6,
+  "sabi":    0.5,
+  "vex":    -0.7,
+  "sharp":   0.6,
+  "mumu":   -0.5,
+  "yarn":   -0.1,
+  "wire":    0.3,
+  "chop":    0.1,
+  "dey":     0.0,
+  "wahala": -0.3,
+  "fire":    0.7,
+  "scatter":-0.4,
+  "enter":   0.0,
+  "comot":   0.0
+}

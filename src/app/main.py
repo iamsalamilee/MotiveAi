@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from loguru import logger
 from src.app.routes import simulate, recommend
 from src.app.models.schemas import HealthResponse
+from src.app.core.config import settings
 
 app = FastAPI(
     title="MotiveAi",
@@ -13,24 +14,41 @@ app.include_router(simulate.router)
 app.include_router(recommend.router)
 
 _startup_done = False
+_chroma_ready = False
 
 @app.on_event("startup")
 async def startup():
-    global _startup_done
+    global _startup_done, _chroma_ready
     logger.info("Starting MotiveAi...")
-    # TODO Day 2+: uncomment and wire real components
-    # from src.nlp.naija_bert import naija_bert
-    # from src.agent.retriever import retriever
-    # naija_bert.warmup()
-    # retriever.connect(settings.chroma_host, settings.chroma_port)
+
+    # Load NaijaBERT embedder into memory
+    try:
+        from src.nlp.naija_bert import naija_bert
+        naija_bert.warmup()
+        logger.info("NaijaBERT loaded successfully.")
+    except Exception as e:
+        logger.warning(f"NaijaBERT failed to load (will lazy-load on first request): {e}")
+
+    # Connect to ChromaDB
+    try:
+        from src.agent.retriever import retriever
+        retriever.connect(settings.chroma_host, settings.chroma_port)
+        _chroma_ready = retriever.is_ready()
+        logger.info(f"ChromaDB connected. Items indexed: {retriever.get_collection_size()}")
+    except Exception as e:
+        logger.warning(f"ChromaDB connection failed (will retry on first request): {e}")
+        _chroma_ready = False
+
     _startup_done = True
     logger.info("Startup complete.")
 
 @app.get("/health", response_model=HealthResponse)
 async def health():
+    from src.agent.retriever import retriever
     return HealthResponse(
         status="ok",
         models_loaded=_startup_done,
-        chroma_ready=True,      # TODO: retriever.is_ready()
-        items_indexed=0,        # TODO: retriever.get_collection_size()
+        chroma_ready=retriever.is_ready() if _startup_done else False,
+        items_indexed=retriever.get_collection_size() if _startup_done else 0,
     )
+

@@ -40,40 +40,33 @@
 
 ## 🔨 NEXT UP — Wire Real Pipelines (Priority Order)
 
-### Block A: Wire `/simulate-review` (Task A — earns ROUGE + BERTScore + RMSE points)
-**Goal:** When judge POSTs user history + target item, return a REAL Pidgin review + rating
+### Block 1: Wire `/simulate-review` (Task A) — ✅ DONE
+**Goal:** Replace the stub with real code that returns a Pidgin review + rating.
+- [x] Take the user history from the request
+- [x] Run it through Levenshtein → Pidgin VADER → APG4RecSim → SASRec
+- [x] Build the prompt using `simulate_review.txt`
+- [x] Placeholder function returns a template-based Pidgin review (no LLM needed yet)
+- [ ] **Future:** When friend delivers LoRA weights → swap ONE function to use the real model
 
-- [ ] A1. **Wire `main.py` startup** — uncomment: `naija_bert.warmup()`, `retriever.connect()`, `pidgin_vader.load()`, `levenshtein.warmup_cache()`
-- [ ] A2. **Wire `simulate.py` pipeline** — connect the 6 components in order:
-  1. Normalize review texts (Levenshtein → Pidgin VADER)
-  2. Embed normalized texts (NaijaBERT)
-  3. Extract user profile (APG4RecSim)
-  4. Temporal attention weighting (SASRec)
-  5. Build LLM prompt from profile + target item (using `simulate_review.txt`)
-  6. **PLACEHOLDER**: Return prompt-based output (until LoRA model arrives)
-  7. Parse rating from output
-- [ ] A3. **Create LLM placeholder** — a function that takes a prompt and returns a reasonable review WITHOUT a real model. This keeps the pipeline working end-to-end. When friend delivers LoRA weights, we swap this one function.
+### Block 2: Wire `/recommend` (Task B) — ✅ DONE
+**Goal:** Replace the stub with real code that returns ranked recommendations.
+- [x] Detect cold start
+- [x] Run Lasso to generate pseudo-interactions
+- [x] Embed the user profile with NaijaBERT
+- [x] Query ChromaDB for similar items
+- [x] Rank results using cosine similarity (no LLM needed yet)
+- [ ] **Future:** When friend delivers LoRA weights → swap ONE function for real reranking
 
-### Block B: Wire `/recommend` (Task B — earns 30+25+20 = 75 rubric points!)
-**Goal:** When judge POSTs user persona, return ranked Yelp restaurant recommendations
+### Block 3: Wire `main.py` startup — ✅ DONE
+**Goal:** Connect models on boot so they are ready before requests come in.
+- [x] Uncomment `naija_bert.warmup()` and `retriever.connect()`
 
-- [ ] B1. **Wire `recommend.py` pipeline** — connect the components:
-  1. `lasso.detect_cold_start(target_history)`
-  2. If cold-start: `lasso.simulate(source_history, target_domain)`
-  3. Combine real + pseudo history, embed with NaijaBERT
-  4. `retriever.retrieve(query_vec, top_k=100)`
-  5. `verbalizer.rerank(profile, candidates)` (uses embedding similarity for now)
-  6. Return top-K with reasoning strings
-- [ ] B2. **Make `llamarec.py` work without LLM** — use embedding cosine similarity as the scoring function (PRD's fallback strategy). When LoRA model arrives, swap in real logit extraction.
-
-### Block C: Data & ChromaDB Population
-**Goal:** ChromaDB has real Yelp restaurants so `/recommend` returns real items
-
-- [ ] C1. **Extract Amazon zip** → `data/raw/` (you downloaded it)
-- [ ] C2. **Extract Yelp zip** → `data/raw/`
-- [ ] C3. Run `python data/preprocess_yelp.py --business-file data/raw/yelp_academic_dataset_business.json`
-- [ ] C4. Run `python data/preprocess_amazon.py --electronics-file data/raw/amazon_electronics.jsonl --movies-file data/raw/amazon_movies.jsonl`
-- [ ] C5. Run `python data/build_chroma_index.py` — populates ChromaDB with embedded Yelp businesses
+### Block 4: Populate ChromaDB with sample data — ✅ DATA GENERATED
+**Goal:** ChromaDB has real Yelp restaurants so `/recommend` returns real items.
+- [x] Generate 30,000 simulated Jumia reviews (Source Domain)
+- [x] Generate 2,000 simulated Yelp restaurants (Target Domain)
+- [x] Move clean datasets to `data/test/` and update `.gitignore`
+- [ ] Run `python data/build_chroma_index.py --input data/test/yelp_simulated_reviews.jsonl` to push data into DB
 
 ### Block D: Missing Tests (3 files)
 - [ ] D1. Create `test_retriever.py` — connect, retrieve, upsert, collection_size
