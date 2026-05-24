@@ -1,6 +1,6 @@
 ---
 title: MotiveAi
-emoji: 🇳🇬
+emoji: 🚀
 colorFrom: green
 colorTo: purple
 sdk: docker
