@@ -57,28 +57,32 @@ def _get_components():
     return _profile_gen, _temporal, _naija_bert, _prompt_template
 
 
-# ── Placeholder LLM — swap this ONE function when LoRA weights arrive ────
-def _generate_review_placeholder(prompt: str, profile) -> tuple[str, float]:
+# ── LLM Review Generator — tries real model, falls back to placeholder ────
+def _generate_review(prompt: str, profile) -> tuple[str, float]:
     """
-    Placeholder that generates a review WITHOUT a real LLM.
-    Uses the user's profile traits to construct a realistic review.
-
-    When LoRA model arrives:
-      1. Load model from data/models/
-      2. Replace this function body with a real forward pass
-      3. Everything else stays the same
+    Generate a review using the LoRA-finetuned LLM if available.
+    Falls back to a rule-based placeholder if the LLM isn't loaded.
 
     Returns:
         (generated_review, predicted_rating)
     """
+    from src.nlp.llm_verbalizer import load_llm, generate_review
+
     rating = round(profile.rating_skew)
     rating = max(1, min(5, rating))  # clamp 1-5
 
-    # Determine writing style from the user's dominant vocabulary
+    # Try the real LLM first
+    if load_llm():
+        llm_review = generate_review(prompt)
+        if llm_review:
+            logger.info("Generated review using LoRA-finetuned Mistral 7B")
+            return llm_review, float(rating)
+
+    # Fallback: rule-based placeholder
+    logger.info("Using placeholder review generator (LLM not available)")
     vocab = profile.domain_vocabulary
     has_pidgin = any(w in vocab for w in ["dey", "sabi", "na", "sef", "sha", "abeg", "wahala"])
 
-    # Build a contextually aware review based on the profile
     if rating >= 4:
         if has_pidgin:
             review = (
@@ -164,7 +168,7 @@ async def simulate_review(req: SimulateReviewRequest) -> SimulateReviewResponse:
 
     # ── Step 7: Generate review ───────────────────────────────────────
     # PLACEHOLDER — swap _generate_review_placeholder with real LLM call
-    generated_review, predicted_rating = _generate_review_placeholder(prompt, profile)
+    generated_review, predicted_rating = _generate_review(prompt, profile)
 
     # ── Step 8: Build and return response ─────────────────────────────
     confidence = min(1.0, len(req.user_history) / 10.0)  # more history = more confident
