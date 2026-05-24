@@ -1,4 +1,7 @@
+import sys
+import os
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from loguru import logger
 from src.app.routes import simulate, recommend
 from src.app.models.schemas import HealthResponse
@@ -12,6 +15,10 @@ app = FastAPI(
 
 app.include_router(simulate.router)
 app.include_router(recommend.router)
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
 
 _startup_done = False
 _chroma_ready = False
@@ -42,13 +49,15 @@ async def startup():
         if count == 0:
             logger.warning("ChromaDB empty — running index population...")
             # Run the indexer script automatically using the 4K normalized Yelp data!
+            env = os.environ.copy()
+            env["PYTHONPATH"] = os.getcwd()
             subprocess.Popen([
-                "python", "data/build_chroma_index.py",
+                sys.executable, "data/build_chroma_index.py",
                 "--input", "data/yelp_businesses_normalized.jsonl",
                 "--chroma-host", settings.chroma_host,
                 "--chroma-port", str(settings.chroma_port),
                 "--batch-size", "32"
-            ])
+            ], env=env, cwd=os.getcwd())
             logger.info("Indexing started in background.")
             
     except Exception as e:
