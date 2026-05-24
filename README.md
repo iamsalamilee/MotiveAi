@@ -1,3 +1,12 @@
+---
+title: MotiveAi
+emoji: 🇳🇬
+colorFrom: green
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # MotiveAi 🇳🇬
 
 **DSN × BCT LLM Agent Challenge — Hackathon 3.0**
