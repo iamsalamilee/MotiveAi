@@ -16,7 +16,10 @@ class VectorRetriever:
     def connect(self, host: str, port: int, collection_name: str = "items") -> None:
         """Connect to ChromaDB and get/create the items collection."""
         import chromadb
-        self._client = chromadb.HttpClient(host=host, port=port)
+        import os
+        os.makedirs("chroma_data", exist_ok=True)
+        # Switch to PersistentClient for single-container Hugging Face Spaces compatibility!
+        self._client = chromadb.PersistentClient(path="chroma_data")
         self._collection = self._client.get_or_create_collection(
             name=collection_name,
             metadata={"hnsw:space": "cosine"}

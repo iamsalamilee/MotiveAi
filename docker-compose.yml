@@ -9,7 +9,7 @@ services:
   api:
     build: .
     ports:
-      - "8000:8000"
+      - "8000:7860"
     environment:
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000

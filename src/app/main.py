@@ -32,9 +32,25 @@ async def startup():
     # Connect to ChromaDB
     try:
         from src.agent.retriever import retriever
+        import subprocess
+        
         retriever.connect(settings.chroma_host, settings.chroma_port)
         _chroma_ready = retriever.is_ready()
-        logger.info(f"ChromaDB connected. Items indexed: {retriever.get_collection_size()}")
+        count = retriever.get_collection_size()
+        logger.info(f"ChromaDB connected. Items indexed: {count}")
+        
+        if count == 0:
+            logger.warning("ChromaDB empty — running index population...")
+            # Run the indexer script automatically using the 4K normalized Yelp data!
+            subprocess.Popen([
+                "python", "data/build_chroma_index.py",
+                "--input", "data/yelp_businesses_normalized.jsonl",
+                "--chroma-host", settings.chroma_host,
+                "--chroma-port", str(settings.chroma_port),
+                "--batch-size", "32"
+            ])
+            logger.info("Indexing started in background.")
+            
     except Exception as e:
         logger.warning(f"ChromaDB connection failed (will retry on first request): {e}")
         _chroma_ready = False

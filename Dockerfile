@@ -10,5 +10,5 @@ COPY src/ ./src/
 COPY data/ ./data/
 COPY metrics/ ./metrics/
 
-EXPOSE 8000
-CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+EXPOSE 7860
+CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]

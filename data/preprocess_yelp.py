@@ -41,7 +41,7 @@ def main():
     args = parser.parse_args()
 
     written = 0
-    with open(args.business_file) as fin, open(args.output, "w") as fout:
+    with open(args.business_file, encoding='utf-8') as fin, open(args.output, "w", encoding='utf-8') as fout:
         for line in fin:
             if written >= args.max_records:
                 break

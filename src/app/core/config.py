@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    chroma_host: str = "chromadb"
+    chroma_host: str = "localhost"
     chroma_port: int = 8001
     model_path: str = "/app/data/models"
     llm_quantize: str = "none"
