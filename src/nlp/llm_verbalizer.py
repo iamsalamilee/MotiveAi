@@ -69,6 +69,7 @@ def load_llm() -> bool:
 def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
     """
     Generate a review using the locally loaded model.
+    Dynamically switches between Pidgin and English based on user profile.
     """
     if not _llm_ready or _model is None or _tokenizer is None:
         return None
@@ -88,9 +89,18 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         item_match = re.search(r"Item:\s*(.+)", prompt)
         item_name = item_match.group(1).strip() if item_match else "product"
 
-        # Force the model into Pidgin mode by starting the review with "na" (is)
-        # and using the exact format it was trained on.
-        simple_prompt = f"### Review ({label}):\nThis {item_name} na"
+        # Check if this specific user speaks Pidgin based on their profile in the prompt
+        pidgin_words = ["dey", "sabi", "na", "sef", "sha", "abeg", "wahala", "them"]
+        user_speaks_pidgin = any(word in prompt.lower() for word in pidgin_words)
+
+        # Match the model's training format
+        # Dynamically start the sentence based on the user's personal vocabulary
+        if user_speaks_pidgin:
+            simple_prompt = f"### Review ({label}):\nThis {item_name} na"
+            start_word = "na"
+        else:
+            simple_prompt = f"### Review ({label}):\nThis {item_name} is"
+            start_word = "is"
 
         inputs = _tokenizer(simple_prompt, return_tensors="pt", truncation=True, max_length=128)
 
@@ -98,10 +108,10 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
             outputs = _model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                temperature=0.8,  # Slightly higher temp
+                temperature=0.8,
                 top_p=0.9,
                 do_sample=True,
-                repetition_penalty=1.25,  # Higher penalty to stop repeating "Geilege"
+                repetition_penalty=1.25,
                 pad_token_id=_tokenizer.eos_token_id,
             )
 
@@ -114,7 +124,7 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         review = re.sub(r"RATING:.*", "", review, flags=re.IGNORECASE).strip()
 
         # Re-attach the start of the sentence
-        full_review = f"This {item_name} na {review}"
+        full_review = f"This {item_name} {start_word} {review}"
 
         if full_review:
             logger.info(f"Generated review ({len(full_review)} chars): {full_review[:80]}...")
