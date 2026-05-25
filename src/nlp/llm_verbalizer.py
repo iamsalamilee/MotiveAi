@@ -69,43 +69,39 @@ def load_llm() -> bool:
 def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
     """
     Generate a review using the locally loaded model.
-    Uses the chat template to enforce Pidgin and follow prompt instructions.
     """
     if not _llm_ready or _model is None or _tokenizer is None:
         return None
 
     try:
         import torch
+        import re
 
-        # Create chat messages
-        messages = [
-            {
-                "role": "system", 
-                "content": "You are a Nigerian product reviewer. You MUST write your reviews in Nigerian Pidgin English. Use expressions like 'e dey work', 'no wahala', 'na proper', 'e sweet me', 'I no go lie'. Keep reviews between 2-4 sentences. Be authentic and natural."
-            },
-            {
-                "role": "user", 
-                "content": prompt
-            }
-        ]
+        # Determine sentiment from rating_skew in the prompt
+        label = "positive"
+        if "averaged 1" in prompt or "averaged 2" in prompt:
+            label = "negative"
+        elif "averaged 3" in prompt:
+            label = "neutral"
 
-        # Apply Qwen's chat template
-        chat_prompt = _tokenizer.apply_chat_template(
-            messages, 
-            tokenize=False, 
-            add_generation_prompt=True
-        )
+        # Extract item name if present
+        item_match = re.search(r"Item:\s*(.+)", prompt)
+        item_name = item_match.group(1).strip() if item_match else "product"
 
-        inputs = _tokenizer(chat_prompt, return_tensors="pt", truncation=True, max_length=512)
+        # Force the model into Pidgin mode by starting the review with "na" (is)
+        # and using the exact format it was trained on.
+        simple_prompt = f"### Review ({label}):\nThis {item_name} na"
+
+        inputs = _tokenizer(simple_prompt, return_tensors="pt", truncation=True, max_length=128)
 
         with torch.no_grad():
             outputs = _model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                temperature=0.7,
+                temperature=0.8,  # Slightly higher temp
                 top_p=0.9,
                 do_sample=True,
-                repetition_penalty=1.1,
+                repetition_penalty=1.25,  # Higher penalty to stop repeating "Geilege"
                 pad_token_id=_tokenizer.eos_token_id,
             )
 
@@ -113,12 +109,16 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         generated = outputs[0][inputs["input_ids"].shape[1]:]
         review = _tokenizer.decode(generated, skip_special_tokens=True).strip()
 
-        # Clean up any trailing markers just in case
-        review = re.sub(r"###.*", "", review).strip()
+        # Clean up any trailing markers
+        review = re.sub(r"###.*", "", review, flags=re.IGNORECASE).strip()
+        review = re.sub(r"RATING:.*", "", review, flags=re.IGNORECASE).strip()
 
-        if review:
-            logger.info(f"Generated review ({len(review)} chars): {review[:80]}...")
-        return review if review and len(review) > 10 else None
+        # Re-attach the start of the sentence
+        full_review = f"This {item_name} na {review}"
+
+        if full_review:
+            logger.info(f"Generated review ({len(full_review)} chars): {full_review[:80]}...")
+        return full_review if len(full_review) > 10 else None
 
     except Exception as e:
         logger.error(f"LLM generation failed: {type(e).__name__}: {e}")
