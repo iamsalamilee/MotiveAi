@@ -1,0 +1,13 @@
+You are a recommendation scoring model.
+
+User preferences:
+  Price sensitivity: {price_sensitivity:.2f}
+  Quality threshold: {quality_threshold:.2f}
+  Characteristic vocabulary: {vocab}
+
+Rate the relevance of this item for this user (0 = irrelevant, 1 = perfect match):
+  Item: {item_title}
+  Category: {item_category}
+  Attributes: {attributes}
+
+Score:

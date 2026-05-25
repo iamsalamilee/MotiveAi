@@ -1,0 +1,25 @@
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+
+  api:
+    build: .
+    ports:
+      - "8000:7860"
+    environment:
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - MODEL_PATH=/app/data/models
+      - LLM_QUANTIZE=none
+      - LOG_LEVEL=INFO
+    depends_on:
+      - chromadb
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  chroma_data:

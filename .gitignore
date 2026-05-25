@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Data and Models (NEVER PUSH TO GITHUB)
+data/raw/
+data/processed/
+data/models/
+data/cache/
+*.csv
+*.zip
+
+# ChromaDB Vector Database
+chroma_data/
+
+# Large raw datasets (only push the normalized 4K version)
+data/yelp_businesses.jsonl
+
+# Internal planning docs
+BCT Hack Brief.pdf
+MotiveAi.docx
+PRD_text.txt
+README (2).md
+
+# OS Files
+.DS_Store
+Thumbs.db
