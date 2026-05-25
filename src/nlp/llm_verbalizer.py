@@ -69,7 +69,7 @@ def load_llm() -> bool:
 def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
     """
     Generate a review using the locally loaded model.
-    Dynamically switches between Pidgin and English based on user profile.
+    Uses Chat Template and proper stop tokens to prevent hallucinations.
     """
     if not _llm_ready or _model is None or _tokenizer is None:
         return None
@@ -78,57 +78,52 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         import torch
         import re
 
-        # Determine sentiment from rating_skew in the prompt
-        label = "positive"
-        if "averaged 1" in prompt or "averaged 2" in prompt:
-            label = "negative"
-        elif "averaged 3" in prompt:
-            label = "neutral"
-
-        # Extract item name if present
+        # Extract item name
         item_match = re.search(r"Item:\s*(.+)", prompt)
         item_name = item_match.group(1).strip() if item_match else "product"
 
-        # Check if this specific user speaks Pidgin based on their profile in the prompt
         pidgin_words = ["dey", "sabi", "na", "sef", "sha", "abeg", "wahala", "them"]
         user_speaks_pidgin = any(word in prompt.lower() for word in pidgin_words)
 
-        # Match the model's training format
-        # Dynamically start the sentence based on the user's personal vocabulary
         if user_speaks_pidgin:
-            simple_prompt = f"### Review ({label}):\nThis {item_name} na"
-            start_word = "na"
+            sys_msg = "You are a Nigerian product reviewer. You MUST write in Nigerian Pidgin English. Use words like 'e dey work', 'wahala', 'na', 'abeg'. Keep it short (2-3 sentences)."
         else:
-            simple_prompt = f"### Review ({label}):\nThis {item_name} is"
-            start_word = "is"
+            sys_msg = "You are a product reviewer. Write a standard English review. Keep it short (2-3 sentences)."
 
-        inputs = _tokenizer(simple_prompt, return_tensors="pt", truncation=True, max_length=128)
+        messages = [
+            {"role": "system", "content": sys_msg},
+            {"role": "user", "content": f"Write a review for this product: {item_name}"}
+        ]
+
+        chat_prompt = _tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = _tokenizer(chat_prompt, return_tensors="pt", truncation=True, max_length=512)
+
+        # Qwen chat models use <|im_end|> (151645) as the stop token. 
+        # If we don't tell it to stop there, it hallucinates indefinitely!
+        stop_tokens = [_tokenizer.eos_token_id]
+        if hasattr(_tokenizer, "convert_tokens_to_ids"):
+            im_end = _tokenizer.convert_tokens_to_ids("<|im_end|>")
+            if im_end is not None:
+                stop_tokens.append(im_end)
 
         with torch.no_grad():
             outputs = _model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                temperature=0.8,
+                temperature=0.7,
                 top_p=0.9,
                 do_sample=True,
-                repetition_penalty=1.25,
+                repetition_penalty=1.1,
                 pad_token_id=_tokenizer.eos_token_id,
+                eos_token_id=stop_tokens,
             )
 
-        # Decode only the generated part
         generated = outputs[0][inputs["input_ids"].shape[1]:]
         review = _tokenizer.decode(generated, skip_special_tokens=True).strip()
 
-        # Clean up any trailing markers
-        review = re.sub(r"###.*", "", review, flags=re.IGNORECASE).strip()
-        review = re.sub(r"RATING:.*", "", review, flags=re.IGNORECASE).strip()
-
-        # Re-attach the start of the sentence
-        full_review = f"This {item_name} {start_word} {review}"
-
-        if full_review:
-            logger.info(f"Generated review ({len(full_review)} chars): {full_review[:80]}...")
-        return full_review if len(full_review) > 10 else None
+        if review:
+            logger.info(f"Generated review ({len(review)} chars): {review[:80]}...")
+        return review if len(review) > 5 else None
 
     except Exception as e:
         logger.error(f"LLM generation failed: {type(e).__name__}: {e}")
