@@ -116,15 +116,22 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         with torch.no_grad():
             outputs = _model.generate(
                 **inputs,
-                max_new_tokens=max_new_tokens,
-                temperature=0.3,
+                max_new_tokens=40,  # Keep it short so it doesn't ramble
+                temperature=0.6,
                 top_p=0.9,
                 do_sample=True,
+                repetition_penalty=1.2,  # BRING THIS BACK so it doesn't loop "I no dey use"
                 pad_token_id=_tokenizer.eos_token_id,
             )
 
         generated = outputs[0][inputs["input_ids"].shape[1]:]
         review = _tokenizer.decode(generated, skip_special_tokens=True).strip()
+
+        # Stop at the first or second period to ensure a clean cutoff
+        sentences = re.split(r'(?<=[.!?]) +', review)
+        if len(sentences) > 1:
+            # Keep only the first complete sentence from the generated text
+            review = sentences[0]
 
         # Clean up any trailing markers
         review = re.sub(r"###.*", "", review, flags=re.IGNORECASE).strip()
