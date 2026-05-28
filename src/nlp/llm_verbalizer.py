@@ -127,21 +127,47 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         generated = outputs[0][inputs["input_ids"].shape[1]:]
         review = _tokenizer.decode(generated, skip_special_tokens=True).strip()
 
-        # Stop at the first or second period to ensure a clean cutoff
+        # ── AGGRESSIVE CLEANUP ──────────────────────────────────────────
+        # The model was trained on sentiment classification data too,
+        # so it sometimes leaks "What is the sentiment?" etc.
+
+        # 1. Cut at the first newline — reviews don't have line breaks
+        review = review.split("\n")[0].strip()
+
+        # 2. Cut at any training artifact pattern
+        artifact_patterns = [
+            r"What is.*",        # "What is the sentiment..."
+            r"Options are.*",    # "Options are: (1)..."
+            r"Sta da.*",         # "Sta da best of luck..."
+            r"The sentiment.*",  # "The sentiment of this review..."
+            r"Choose.*",         # "Choose the correct..."
+            r"Select.*",         # "Select the best..."
+            r"Answer.*",         # "Answer:"
+            r"Question.*",       # "Question:"
+            r"\(1\).*",          # "(1)..."
+            r"Review:.*",        # Another "Review:" starting
+        ]
+        for pattern in artifact_patterns:
+            review = re.split(pattern, review, flags=re.IGNORECASE)[0].strip()
+
+        # 3. Keep only the first complete sentence
         sentences = re.split(r'(?<=[.!?]) +', review)
         if len(sentences) > 1:
-            # Keep only the first complete sentence from the generated text
             review = sentences[0]
 
-        # Clean up any trailing markers
+        # 4. Remove trailing markers
         review = re.sub(r"###.*", "", review, flags=re.IGNORECASE).strip()
         review = re.sub(r"RATING:.*", "", review, flags=re.IGNORECASE).strip()
 
-        # Attach the prefix back so it forms a complete review
+        # 5. If it ends mid-sentence (no period), add one
+        if review and review[-1] not in ".!?":
+            review = review.rsplit(",", 1)[0] + "."
+
+        # Attach the prefix back
         full_review = prefix.replace("Review:\n", "") + " " + review
 
         if full_review:
-            logger.info(f"Generated review: {full_review[:80]}...")
+            logger.info(f"Generated review: {full_review[:120]}...")
         return full_review if len(full_review) > 10 else None
 
     except Exception as e:
