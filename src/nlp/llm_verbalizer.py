@@ -50,7 +50,7 @@ def load_llm() -> bool:
         _model = AutoModelForCausalLM.from_pretrained(
             MERGED_MODEL_ID,
             token=HF_TOKEN if HF_TOKEN else None,
-            torch_dtype=torch.float32,
+            torch_dtype=torch.bfloat16,
             device_map="cpu",
             trust_remote_code=True,
             low_cpu_mem_usage=True,
@@ -118,11 +118,9 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         with torch.no_grad():
             outputs = _model.generate(
                 **inputs,
-                max_new_tokens=40,  # Keep it short so it doesn't ramble
-                temperature=0.6,
-                top_p=0.9,
-                do_sample=True,
-                repetition_penalty=1.2,  # BRING THIS BACK so it doesn't loop "I no dey use"
+                max_new_tokens=30,  # Short and punchy
+                do_sample=False,    # Greedy decoding = faster on CPU
+                repetition_penalty=1.2,
                 pad_token_id=_tokenizer.eos_token_id,
             )
 
