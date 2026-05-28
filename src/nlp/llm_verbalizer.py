@@ -90,9 +90,9 @@ def generate_review(prompt: str, max_new_tokens: int = 150) -> str:
         item_name = item_match.group(1).strip() if item_match else "product"
 
         # Only use words that are EXCLUSIVELY Pidgin (not common English words)
-        # "them" was removed because it's a normal English word that caused false positives
-        pidgin_words = ["dey", "sabi", "sef", "sha", "abeg", "wahala", "wetin", "oga", "naira"]
-        user_speaks_pidgin = any(word in prompt.lower() for word in pidgin_words)
+        # Use word boundaries (\b) so "sha" doesn't match "shall" or "shape"
+        pidgin_only = ["dey", "sabi", "sef", "abeg", "wahala", "wetin", "oga"]
+        user_speaks_pidgin = any(re.search(rf'\b{w}\b', prompt.lower()) for w in pidgin_only)
 
         # Force the model by starting the sentence for it.
         # This completely bypasses the need for complex instructions.
